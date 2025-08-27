@@ -1,0 +1,88 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg1
+spec:
+  instances: 2
+  imageName: uvoo/postgresql:17.5-bookworm
+  primaryUpdateStrategy: unsupervised      # automated rolling update (default)
+  primaryUpdateMethod: switchover          # promote a fully-upgraded replica
+  enableSuperuserAccess: true
+
+  postgresql:
+    parameters:
+      shared_buffers: 128MB
+      # Enable PGAudit extension
+      # CNPG will automatically add pgaudit to shared_preload_libraries
+      # if pgaudit.* parameters are present.
+      # shared_preload_libraries: "pgaudit" # You usually don't need to specify this directly for PGAudit
+
+      # PGAudit configuration to log all query types
+      # 'all' logs all statement classes: READ, WRITE, FUNCTION, ROLE, DDL, MISC, MISC_SET
+      # You can specify specific classes, e.g., "DDL,WRITE"
+      # -misc is often used to exclude internal/background activity if you only want user queries
+      pgaudit.log: "all, -misc"
+      
+      # Optional: Log parameters (values passed to queries)
+      # Be cautious with sensitive data in logs if enabling this in production
+      pgaudit.log_parameter: "on"
+
+      # Optional: Log relations (tables, views, etc. involved in queries)
+      pgaudit.log_relation: "on"
+
+      # Optional: Log statements executed within a transaction, not just at commit
+      # This can generate a lot of logs!
+      # pgaudit.log_level: "log" 
+
+      # Other PostgreSQL logging parameters (optional, but good practice)
+      log_connections: "on"           # Log successful connections
+      log_disconnections: "on"        # Log session termination
+      log_line_prefix: "%m [%p] %q%u@%d " # Customize log line prefix (CNPG wraps this in JSON)
+      log_timezone: "UTC"             # Ensure consistent timestamps
+      
+      # You can also use log_statement if you don't need the granularity of PGAudit
+      # However, PGAudit provides more detailed and structured auditing.
+      # If you use log_statement, it can be:
+      # 'none' (default), 'ddl', 'mod', 'all'
+      # To log ALL statements using only log_statement (less detail than PGAudit):
+      # log_statement: "all" 
+      # Note: If you enable pgaudit.log='all', log_stateme
+
+  storage:
+    size: 3Gi
+
+  managed:
+    services:
+      additional:
+        - selectorType: rw # This targets the primary (read-write) instance
+          serviceTemplate:
+            metadata:
+              name: pg1-rw-lb # Name your new LoadBalancer service
+              # You can add labels or annotations here if needed,
+              # for example, cloud provider specific annotations for load balancers.
+              # annotations:
+              #   service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+            spec:
+              type: LoadBalancer
+              ports:
+                - port: 5432       # Port the LoadBalancer will listen on
+                  targetPort: 5432 # Port of the PostgreSQL pod
+                  protocol: TCP
+
+
+
+  # bootstrap:
+  #   recovery:
+  #     source: test
+
+  # backup:
+  #   retentionPolicy: "30d"
+  #   barmanObjectStore:
+  #     destinationPath: "https://myblobstorageaccount.blob.core.windows.net/grafana/cnpg-backups/"
+  #     azureCredentials:
+  #       storageAccount:
+  #         name: cnpg-storage-blob-creds
+  #         key: AZURE_STORAGE_ACCOUNT
+  #       storageKey:
+  #         name: cnpg-storage-blob-creds
+  #         key: AZURE_STORAGE_KEY

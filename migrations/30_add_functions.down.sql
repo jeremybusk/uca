@@ -1,0 +1,12 @@
+DROP FUNCTION public.create_certificate_authority;
+DROP FUNCTION public.create_certificate_authority_openssl;
+DROP FUNCTION public.decrypt_private_key;
+DROP FUNCTION public.encrypt_private_key;
+DROP FUNCTION public.generate_openssl_ca_command;
+DROP FUNCTION public.generate_openssl_sign_command;
+DROP FUNCTION public.generate_serial_number;
+DROP FUNCTION public.issue_certificate;
+DROP FUNCTION public.issue_certificate_openssl;
+DROP FUNCTION public.revoke_certificate;
+DROP FUNCTION public.update_ca_pem;
+DROP FUNCTION public.update_certificate_pem;
